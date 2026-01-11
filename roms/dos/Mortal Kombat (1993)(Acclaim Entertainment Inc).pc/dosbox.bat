@@ -1,2 +1,2 @@
 c:
-mk.exe
+MK.EXE

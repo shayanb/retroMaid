@@ -3,7 +3,7 @@
 # Batocera ROM paths
 # For testing locally, use: "/Users/shayan/Documents/GitHub/retroMaid/roms"
 # For network share, use: "/Volumes/BATOCERA/roms" or "/Volumes/share/roms"
-roms_path: "/Users/shayan/Documents/GitHub/retroMaid/roms"  # Change to your mounted SMB path or use local path for testing
+roms_path: "/Volumes/share/roms"  # Change to your mounted SMB path or use local path for testing
 
 # Scraper settings
 scrapers:

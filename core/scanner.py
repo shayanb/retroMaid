@@ -41,6 +41,18 @@ SYSTEM_EXTENSIONS = {
     'ngpc': ['.ngc', '.zip'],  # Neo Geo Pocket Color
     'wonderswan': ['.ws', '.zip'],
     'wonderswancolor': ['.wsc', '.zip'],
+    # Commodore systems
+    'c64': ['.d64', '.t64', '.prg', '.crt', '.tap', '.g64', '.zip'],  # Commodore 64
+    'vic20': ['.prg', '.crt', '.tap', '.a0', '.20', '.zip'],  # VIC-20
+    'amiga': ['.adf', '.ipf', '.dms', '.adz', '.lha', '.zip'],  # Amiga
+    'amigacd32': ['.cue', '.iso', '.chd'],  # Amiga CD32
+    # Other computer systems
+    'zxspectrum': ['.z80', '.sna', '.tap', '.tzx', '.dsk', '.trd', '.zip'],  # ZX Spectrum
+    'amstradcpc': ['.dsk', '.sna', '.cdt', '.zip'],  # Amstrad CPC
+    'msx': ['.rom', '.dsk', '.cas', '.mx1', '.mx2', '.zip'],  # MSX
+    'msx1': ['.rom', '.dsk', '.cas', '.mx1', '.zip'],  # MSX1
+    'msx2': ['.rom', '.dsk', '.cas', '.mx2', '.zip'],  # MSX2
+    'dos': ['.exe', '.com', '.bat'],  # DOS (inside .pc folders)
 }
 
 
@@ -113,6 +125,9 @@ class ROMScanner:
         # Get valid extensions for this system
         extensions = SYSTEM_EXTENSIONS.get(system, ['.zip'])
 
+        # Directories to exclude from ROM scanning
+        excluded_dirs = {'images', 'videos', 'manuals', 'music', 'wheels', 'marquees'}
+
         # Find ROM files
         rom_files = []
 
@@ -120,8 +135,8 @@ class ROMScanner:
             # For .cue files, look in subdirectories (PSX multi-disc games)
             if ext == '.cue':
                 for cue_file in system_path.rglob(f'*{ext}'):
-                    # Skip if in images directory
-                    if 'images' in cue_file.parts:
+                    # Skip if in excluded directories
+                    if any(excluded_dir in cue_file.parts for excluded_dir in excluded_dirs):
                         continue
 
                     rom_files.append(self._create_rom_file(
@@ -130,8 +145,8 @@ class ROMScanner:
             else:
                 # For other files, search in root and subdirectories
                 for rom_file in system_path.rglob(f'*{ext}'):
-                    # Skip if in images directory
-                    if 'images' in rom_file.parts:
+                    # Skip if in excluded directories
+                    if any(excluded_dir in rom_file.parts for excluded_dir in excluded_dirs):
                         continue
 
                     rom_files.append(self._create_rom_file(

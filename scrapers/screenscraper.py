@@ -16,32 +16,51 @@ logger = get_logger()
 
 # Batocera system ID to ScreenScraper platform ID mapping
 SYSTEM_ID_MAP = {
+    # Nintendo
     'nes': 3,  # Nintendo Entertainment System
     'snes': 4,  # Super Nintendo
     'n64': 14,  # Nintendo 64
     'gb': 9,  # Game Boy
     'gbc': 10,  # Game Boy Color
     'gba': 12,  # Game Boy Advance
+    # Sega
     'md': 1,  # Sega Mega Drive/Genesis
     'sms': 2,  # Sega Master System
     'gg': 21,  # Game Gear
-    'pce': 31,  # PC Engine/TurboGrafx-16
+    'dreamcast': 23,  # Sega Dreamcast
+    'saturn': 22,  # Sega Saturn
+    # Sony
     'psx': 57,  # Sony PlayStation
     'ps2': 58,  # Sony PlayStation 2
     'psp': 61,  # Sony PSP
-    'dreamcast': 23,  # Sega Dreamcast
-    'saturn': 22,  # Sega Saturn
+    # NEC
+    'pce': 31,  # PC Engine/TurboGrafx-16
+    # Arcade
     'arcade': 75,  # Arcade
     'mame': 75,  # MAME (same as arcade)
     'fba': 75,  # FinalBurn Alpha (same as arcade)
+    # Atari
     'atari2600': 26,  # Atari 2600
     'atari7800': 43,  # Atari 7800
     'lynx': 28,  # Atari Lynx
     'jaguar': 27,  # Atari Jaguar
+    # SNK
     'ngp': 25,  # Neo Geo Pocket
     'ngpc': 82,  # Neo Geo Pocket Color
+    # Bandai
     'wonderswan': 45,  # WonderSwan
     'wonderswancolor': 46,  # WonderSwan Color
+    # Commodore
+    'c64': 66,  # Commodore 64
+    'vic20': 73,  # VIC-20
+    'amiga': 64,  # Amiga
+    'amigacd32': 130,  # Amiga CD32
+    # Other computers
+    'zxspectrum': 76,  # ZX Spectrum
+    'amstradcpc': 65,  # Amstrad CPC
+    'msx': 113,  # MSX
+    'msx1': 113,  # MSX1 (same as MSX)
+    'msx2': 116,  # MSX2
 }
 
 

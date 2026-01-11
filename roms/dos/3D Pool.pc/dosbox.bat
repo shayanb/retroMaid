@@ -1,2 +1,2 @@
 c:
-pool.exe
+POOL.EXE

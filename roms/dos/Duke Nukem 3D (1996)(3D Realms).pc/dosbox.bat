@@ -1,2 +1,2 @@
 c:
-duke3d.exe
+DUKE3D.EXE
