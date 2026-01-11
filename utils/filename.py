@@ -45,8 +45,13 @@ REMOVE_PATTERNS = [
     r'\(.*?Proto.*?\)',  # Remove prototype markers
     r'\(.*?Unl.*?\)',  # Remove unlicensed markers
     r'\(.*?Hack.*?\)',  # Remove hack markers
+    r'\(.*?Pirate.*?\)',  # Remove pirate markers
+    r'\(.*?Trainer.*?\)',  # Remove trainer markers
+    r'\(.*?\+\d+.*?\)',  # Remove (+3 trainer) style markers
     r'!',  # Remove exclamation marks
     r'\+',  # Remove plus signs
+    r'\[',  # Remove leftover open brackets
+    r'\]',  # Remove leftover close brackets
 ]
 
 
@@ -74,14 +79,26 @@ def sanitize_filename(filename: str, for_matching: bool = True) -> str:
         name = re.sub(r'\(CD\s*\d+\)', '', name, flags=re.IGNORECASE)
         name = re.sub(r'Disc\s*\d+', '', name, flags=re.IGNORECASE)
 
-        # Remove version numbers
-        name = re.sub(r'v?\d+\.\d+', '', name)
+        # Remove version numbers (but not in middle of words)
+        name = re.sub(r'\s+v?\d+\.\d+', '', name)
+        name = re.sub(r'v?\d+\.\d+\s+', '', name)
 
-    # Replace special characters with spaces
-    name = re.sub(r'[_\-\.]', ' ', name)
+        # Remove common suffixes like _prv, _demo, etc.
+        name = re.sub(r'[_\-](prv|demo|preview|final|remastered)', '', name, flags=re.IGNORECASE)
+
+    # Replace underscores, hyphens, and dots with spaces
+    # This is important for C64 games like "night_shift" or "nodes.of.yesod"
+    name = re.sub(r'[_\-]', ' ', name)
+
+    # Replace dots with spaces, but be careful with version numbers
+    # Only replace dots that are clearly word separators (surrounded by letters)
+    name = re.sub(r'([a-zA-Z])\.([a-zA-Z])', r'\1 \2', name)
 
     # Remove multiple spaces
     name = re.sub(r'\s+', ' ', name)
+
+    # Remove leading/trailing special characters
+    name = name.strip(' ._-')
 
     return name.strip()
 
