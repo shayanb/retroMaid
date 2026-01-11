@@ -1,0 +1,2 @@
+c:
+setup.exe

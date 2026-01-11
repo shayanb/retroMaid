@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<gameList>
+	<game>
+		<path>./Arcade Party Pak (USA)/Arcade Party Pak (USA).cue</path>
+		<name>Arcade Party Pak</name>
+		<desc>Get ready to party (like it's 1989?) with Midway's Arcade Party Pak for the PlayStation. There are six retro games featured on this disc including Super Sprint, 720 Degrees, Rampage, Toobin', Klax, and Smash TV, each originally released between 1986 and 1990.</desc>
+		<image>./images/Arcade Party Pak (USA)-image.png</image>
+		<marquee>./images/Arcade Party Pak (USA)-marquee.png</marquee>
+		<thumbnail>./images/Arcade Party Pak (USA)-thumb.jpg</thumbnail>
+		<developer>Digital Eclipse Software, Inc.</developer>
+		<publisher>Midway Home Entertainment, Inc.</publisher>
+		<genre>Compilation</genre>
+		<lang>en</lang>
+		<region>us</region>
+		<scrap name="HfsDB" date="20260106T114524" />
+	</game>
+	<game>
+		<path>./Pajama Sam - You Are What You Eat from Your Head to Your Feet (USA)/Pajama Sam - You Are What You Eat from Your Head to Your Feet (USA).cue</path>
+		<name>Pajama Sam - You Are What You Eat from Your Head to Your Feet</name>
+		<desc>The world's youngest superhero, Pajama Sam, is back in his third adventure, Pajama Sam: You Are What You Eat From Your Head to Your Feet. Serious trouble is brewing on Mop Top Island as the food groups battle for supremacy. The fats and the sweets are forcing the healthy foods off the island and are quickly increasing their numbers in an attempt to take control. To regain order, an emergency Peace Conference has been called to work out a compromise between all the food groups. Compounding the problem is the disappearance of four of the six delegates.</desc>
+		<image>./images/Pajama Sam - You Are What You Eat from Your Head to Your Feet (USA)-image.png</image>
+		<marquee>./images/Pajama Sam - You Are What You Eat from Your Head to Your Feet (USA)-marquee.png</marquee>
+		<thumbnail>./images/Pajama Sam - You Are What You Eat from Your Head to Your Feet (USA)-thumb.jpg</thumbnail>
+		<developer>Infogrames</developer>
+		<publisher>Infogrames</publisher>
+		<genre>Aventure</genre>
+		<players>1</players>
+		<lang>en</lang>
+		<region>us</region>
+		<scrap name="HfsDB" date="20260106T114625" />
+	</game>
+</gameList>

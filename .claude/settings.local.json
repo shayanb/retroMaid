@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Bash(cat:*)",
+      "Bash(python3:*)",
+      "Bash(tree:*)",
+      "WebFetch(domain:wiki.batocera.org)"
+    ]
+  }
+}

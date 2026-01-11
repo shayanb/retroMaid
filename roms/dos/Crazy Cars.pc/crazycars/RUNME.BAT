@@ -1,0 +1,3 @@
+Echo Off
+Cls
+CrazyCar

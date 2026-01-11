@@ -1,0 +1,38 @@
+
+
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< CRAZY CARS >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>                               *******************                 
+                               FROM THE VORTEX BBS
+                               *******************
+
+
+Commands for the PC/XT/AT/PS
+
+F1 Key-Changes the Color.
+F2 Key-connects or disconects the joystick.
+F3 Key-Turns sound on or off.
+F4 Key-Changes the monitor from B/W (640x200) to color
+F10 Key-Stops or Starts the game
+ESC-Breaks the game and restores the system
+
+If you have the Hercules Black and white card, The F1 and F4 key do nothing
+
+During the game, your car is controlled by either the joystick or the arrow keys on the keyboard.
+
+The controls are: Up-Accelerate,Down-Brake,Left-Turn Left,Righ-Turn Right
+
+In other phases of the game, you have to press the space bar to continue.
+
+After you have finished the race, you can put your name besides your score. Do this by choosing the letters of your name one by one with the cursor. You move the cursor with the arrow keys on the keyboard. Press the space bar to store each individual letter. When you are finished entering your name, move the cursor to the END display and press the space bar again. Your new terrific score is now stored on the disk.
+
+
+Game Rules:
+your are racing in the world's crazyest race: The American Cross Country Prestige Cars Race. Thsi race is in three stages throughout the United States : Arizona, Space Shuttle and Florida. If you are able to do those three Challenges before the time runs out, you will get a faster car. You start with a Mercedes 560, then a Porsch 911. Better than average drivers may drive a ferrari GTO.
+
+While racing, be careful not to collide with other cars near you, each collision will slow your car down and cause you to lose time. Once you have passed a car, be careful to mantain your speed and not allow the cars behind you to collide with you.
+
+Crazy Cars was created as realistic as possible, therfore you must be careful not to lose control of you car especially when you are jumping or cornering.
+
+If you go off the track, your speed will decrease very quickly and your chances of beating the clock will be greatly decreased. Hitting bumps at high speeds will cause your car to fly through the air, but this can be used to pass a car.
+
+To win a stage you have to go through the finish line before the time reaches zero. When the time runs out, the engine stopsbut you will coast as far as your can and if you go through the line, the judges might let you win.
+

@@ -1,0 +1,13 @@
+Hello, Again... Mr. Transistor here.  To "install" this game, unarc the
+files in the subdirectory of your choice on ANY drive.  Then, there are
+three .ARC files which need to have further subdirectories made of them.
+For Example, if you unarced the Master Archive in say, C:\STUFF, then the
+FILES.ARC archive would be unarced in C:\STUFF\FILES.  And so forth for the
+other two archives, CHARS.ARC and ROADMAP.ARC.   Type CRAZYCAR to start the
+game.  I haven't yet figured out how to load other than the Mercedes, yet.
+Also, there appears to be no Joystick support for IBM compatible, but I saw
+some things in the file about AMSTRAD, so if you have one perhaps it's joy-
+stick will work.  This has been tested under DOS 3.3, so no-one should have
+any problems with it!
+
+							Mr. Transistor

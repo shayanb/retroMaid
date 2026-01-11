@@ -1,0 +1,49 @@
+## SYSTEM DOS (X86) ##
+-------------------------------------------------------------------------------
+ROM files extensions accepted: ".pc .dos .zip .squashfs .dosz .m3u .iso .cue"
+
+Each game (files) must be placed in its own directory having the ".pc .dos" extension.
+In each directory, a dosbox.bat file must contain the command line for launching the game.
+
+For example:
+miniputt.pc/
+miniputt.pc/dosbox.bat
+miniputt.pc/MP.DAT
+miniputt.pc/MP.EXE
+
+Where dosbox.bat contains: MP.EXE
+
+With pure-dosbox you can also use zip files.
+
+To quit a game, press CTRL + F9.
+
+MIDI:
+
+SoundFonts (.sf2) files need to be placed in the /userdata/bios folder.
+MT32_CONTROL.ROM file needs to be present inside /userdata/bios/scummvm/extra.
+
+For more info: https://wiki.batocera.org/systems:dos
+-------------------------------------------------------------------------------
+Extensions des fichiers ROMs permises: ".pc .dos .zip .squashfs .dosz .m3u .iso .cue"
+
+Chaque jeu (fichiers) doit être contenu dans un dossier ayant l'extension ".pc .dos".
+Dans chaque dossier, un fichier dosbox.bat doit comporter la ligne de commande pour lancer le jeu.
+
+Par exemple:
+miniputt.pc/
+miniputt.pc/dosbox.bat
+miniputt.pc/MP.DAT
+miniputt.pc/MP.EXE
+
+Et dosbox.bat contient: MP.EXE
+
+Avec pure-dosbox vous pouvez aussi utiliser des fichiers zip.
+
+Pour quitter un jeu, appuyer sur CTRL + F9.
+
+MIDI:
+
+Les fichiers SoundFonts (.sf2) doivent être placés dans le dossier /userdata/bios.
+Le fichier MT32_CONTROL.ROM doit être présent dans /userdata/bios/scummvm/extra.
+
+La doc dos pour Batocera se trouve à cet endroit : https://wiki.batocera.org/systems:dos

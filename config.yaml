@@ -1,0 +1,113 @@
+# retroMaid Configuration File
+
+# Batocera ROM paths
+# For testing locally, use: "/Users/shayan/Documents/GitHub/retroMaid/roms"
+# For network share, use: "/Volumes/BATOCERA/roms" or "/Volumes/share/roms"
+roms_path: "/Users/shayan/Documents/GitHub/retroMaid/roms"  # Change to your mounted SMB path or use local path for testing
+
+# Scraper settings
+scrapers:
+  # Primary scraper (screenscraper, thegamesdb, igdb)
+  primary: "screenscraper"
+
+  # ScreenScraper settings
+  screenscraper:
+    # User credentials (required)
+    username: ""  # Your ScreenScraper username
+    password: ""  # Your ScreenScraper password
+
+    # Developer credentials (if you have them - provides higher quotas)
+    dev_id: ""
+    dev_password: ""
+
+    # Software name identifier
+    soft_name: "retroMaid"
+
+    # Rate limiting (requests per minute)
+    rate_limit: 20
+
+    # Media preferences
+    media:
+      download_images: true
+      download_videos: false  # Videos are large and consume quota
+      image_types:
+        - box2dfront  # Box art
+        - screenshot  # Screenshot
+        - wheel       # Logo/Wheel art
+
+  # TheGamesDB settings (free, no account needed)
+  thegamesdb:
+    api_key: ""  # Optional - higher limits with API key
+
+  # IGDB settings (requires Twitch account)
+  igdb:
+    client_id: ""
+    client_secret: ""
+
+# Matching settings
+matching:
+  # Region preference order (first match wins)
+  region_priority:
+    - "us"
+    - "eu"
+    - "jp"
+    - "wor"  # World
+
+  # Language preference
+  language: "en"
+
+  # Name sanitization for better matching
+  sanitize_filenames: true
+
+  # Fuzzy matching threshold (0-100, higher = stricter)
+  fuzzy_threshold: 80
+
+# Duplicate handling
+duplicates:
+  # Strategy: 'ask', 'keep_first', 'keep_most_complete', 'keep_all'
+  strategy: "ask"
+
+  # Auto-resolve if only file extension differs
+  auto_resolve_extensions: true
+
+# Backup settings
+backup:
+  # Create backup before modifying gamelist.xml
+  enabled: true
+
+  # Backup suffix
+  suffix: "_backup"
+
+# Resume/checkpoint settings
+resume:
+  # Enable checkpoint system
+  enabled: true
+
+  # Checkpoint file location
+  checkpoint_file: ".retromaid_checkpoint.json"
+
+  # Auto-save frequency (games processed)
+  save_frequency: 5
+
+# Logging
+logging:
+  # Log level (DEBUG, INFO, WARNING, ERROR)
+  level: "INFO"
+
+  # Log file location
+  log_file: "retromaid.log"
+
+  # Also log to console
+  console: true
+
+# Systems to process (leave empty to process all)
+# Example: ["psx", "nes", "snes"]
+systems: []
+
+# Batch processing
+batch:
+  # Maximum concurrent downloads
+  max_concurrent_downloads: 3
+
+  # Delay between API requests (seconds)
+  request_delay: 0.5

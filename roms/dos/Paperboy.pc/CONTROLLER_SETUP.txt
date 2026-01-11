@@ -1,0 +1,34 @@
+CONTROLLER SETUP FOR BATOCERA
+================================
+
+Default Batocera Controller Layout (Gravis PC Gamepad style):
+- Button 1 (A/Green): East button
+- Button 2 (B/Yellow): South button
+- Button 3 (X/Blue): North button
+- Button 4 (Y/Red): West button
+
+CUSTOM BUTTON MAPPING:
+1. Start the game in Batocera
+2. Press CTRL+F1 to open the mapper
+3. Click on a DOSBox action
+4. Press the controller button you want to assign
+5. Exit mapper (ESC)
+6. Your settings are saved to mapper.map
+
+JOYSTICK CALIBRATION:
+Some games need joystick calibration:
+1. Run the game's SETUP.EXE (see dosbox_setup.bat)
+2. Configure joystick/gamepad
+3. Save and exit setup
+4. Run the game normally
+
+COMMON FIXES:
+- Joystick moving by itself: Edit dosbox.cfg, set timed=true
+- Buttons not working: Edit dosbox.cfg, set buttonwrap=false
+- Need deadzone: Use DOSBox Pure core (has deadzone settings)
+
+FILES:
+- dosbox.bat: Main game launcher
+- dosbox_setup.bat: Run game setup (if available)
+- dosbox.cfg: DOSBox configuration
+- mapper.map: Controller button mapping (created when you use mapper)
