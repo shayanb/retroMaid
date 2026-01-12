@@ -27,6 +27,9 @@ SYSTEM_ID_MAP = {
     'md': 1,  # Sega Mega Drive/Genesis
     'sms': 2,  # Sega Master System
     'gg': 21,  # Game Gear
+    'sg1000': 109,  # Sega SG-1000
+    'sega32x': 19,  # Sega 32X
+    '32x': 19,  # Sega 32X (alias)
     'dreamcast': 23,  # Sega Dreamcast
     'saturn': 22,  # Sega Saturn
     # Sony
@@ -246,6 +249,11 @@ class ScreenScraper(BaseScraper):
             return None
 
         except ScreenScraperError as e:
+            # Re-raise authentication errors so verification can detect them
+            error_str = str(e).lower()
+            if any(err in error_str for err in ['403', '401', 'login', 'identifiants', 'credentials']):
+                raise
+            # Log and return None for other errors
             logger.error(f"ScreenScraper error: {e}")
             return None
 
@@ -314,6 +322,11 @@ class ScreenScraper(BaseScraper):
             return []
 
         except ScreenScraperError as e:
+            # Re-raise authentication and JSON errors so verification can detect them
+            error_str = str(e).lower()
+            if any(err in error_str for err in ['403', '401', 'login', 'identifiants', 'credentials', 'json', 'expecting value', 'decode']):
+                raise
+            # Log and return empty list for other errors
             logger.error(f"ScreenScraper error: {e}")
             return []
 
@@ -340,6 +353,11 @@ class ScreenScraper(BaseScraper):
             return None
 
         except ScreenScraperError as e:
+            # Re-raise authentication errors so verification can detect them
+            error_str = str(e).lower()
+            if any(err in error_str for err in ['403', '401', 'login', 'identifiants', 'credentials']):
+                raise
+            # Log and return None for other errors
             logger.error(f"ScreenScraper error: {e}")
             return None
 

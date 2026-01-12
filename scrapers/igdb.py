@@ -32,6 +32,9 @@ SYSTEM_ID_MAP = {
     'md': 29,  # Sega Mega Drive/Genesis
     'sms': 64,  # Sega Master System
     'gg': 35,  # Game Gear
+    'sg1000': 84,  # Sega SG-1000
+    'sega32x': 30,  # Sega 32X
+    '32x': 30,  # Sega 32X (alias)
     'dreamcast': 23,  # Sega Dreamcast
     'saturn': 32,  # Sega Saturn
     'megadrive': 29,  # Mega Drive (alias)
@@ -254,18 +257,25 @@ class IGDB(BaseScraper):
             return []
 
         # Build query
-        # Search by name, filter by platform, get relevant fields
+        # Use flexible search without strict quoting for better matching
+        # Remove special characters that might cause issues
+        search_term = game_name.replace('"', '').replace("'", "")
+
         query = f"""
-        search "{game_name}";
+        search "{search_term}";
         fields name, summary, first_release_date, genres.name,
                involved_companies.company.name, involved_companies.developer,
                cover.url, screenshots.url, artworks.url, videos.video_id;
         where platforms = ({platform_id});
-        limit 10;
+        limit 25;
         """
+
+        logger.debug(f"IGDB query for '{game_name}' on platform {platform_id}")
+        logger.debug(f"IGDB full query:\n{query}")
 
         try:
             results = self._make_request('games', query)
+            logger.debug(f"IGDB returned {len(results)} results for '{game_name}'")
 
             games = []
             for game_data in results:
@@ -281,6 +291,11 @@ class IGDB(BaseScraper):
             return games
 
         except IGDBError as e:
+            # Re-raise authentication and JSON errors so verification can detect them
+            error_str = str(e).lower()
+            if any(err in error_str for err in ['403', '401', 'unauthorized', 'credentials', 'token', 'json', 'expecting value', 'decode']):
+                raise
+            # Log and return empty list for other errors
             logger.error(f"IGDB error: {e}")
             return []
 

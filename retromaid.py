@@ -74,6 +74,47 @@ class RetroMaid:
         self.active_scraper = None  # Will be set when first scraper succeeds
         self.failed_scrapers = set()  # Track permanently failed scrapers (auth errors, etc.)
 
+    def _verify_scraper_access(self, scraper_name: str, scraper) -> bool:
+        """
+        Verify API access for a scraper
+
+        Args:
+            scraper_name: Name of the scraper
+            scraper: Scraper instance
+
+        Returns:
+            True if accessible, False if failed
+        """
+        try:
+            # Simple test: try to search for a common game
+            # This will fail immediately if credentials are wrong
+            test_result = scraper.search_by_name("Mario", "nes", "us")
+            # Even if no results, if no exception was raised, auth is OK
+            return True
+        except Exception as e:
+            error_str = str(e).lower()
+            # Check for authentication/credential errors
+            permanent_errors = ['403', '401', 'identifiants', 'credentials', 'unauthorized', 'forbidden', 'login']
+            # Also check for JSON parsing errors which often mean HTML error page was returned
+            json_errors = ['expecting value', 'json', 'decode']
+
+            if any(err in error_str for err in permanent_errors):
+                console.print(f"[red]⨯ {scraper_name}: Authentication failed ({str(e)[:50]}...)[/red]")
+                self.failed_scrapers.add(scraper_name)
+                return False
+            elif any(err in error_str for err in json_errors):
+                # JSON errors usually mean authentication failed and returned HTML error page
+                logger.warning(f"{scraper_name} returned invalid response: {e}")
+                console.print(f"[red]⨯ {scraper_name}: Invalid API response (likely auth error)[/red]")
+                self.failed_scrapers.add(scraper_name)
+                return False
+            else:
+                # Other errors might be temporary (network timeout, etc.)
+                logger.warning(f"Scraper {scraper_name} test failed: {e}")
+                # For now, mark as failed to be safe
+                console.print(f"[yellow]⚠ {scraper_name}: Test failed, will try anyway[/yellow]")
+                return True  # Give it a chance
+
     def _mark_scraper_failed(self, scraper_name: str, error: Exception) -> bool:
         """
         Mark a scraper as permanently failed if it has auth/credential errors
@@ -92,7 +133,7 @@ class RetroMaid:
         if any(err in error_str for err in permanent_errors):
             if scraper_name not in self.failed_scrapers:
                 self.failed_scrapers.add(scraper_name)
-                console.print(f"[red]Scraper '{scraper_name}' disabled due to auth error[/red]")
+                console.print(f"[red]⨯ {scraper_name}: Disabled due to authentication error[/red]")
             return True
 
         return False  # Temporary failure
@@ -226,8 +267,24 @@ class RetroMaid:
 
         console.print(f"Found [yellow]{len(missing)}[/yellow] ROMs missing metadata")
 
+        # Verify scraper access before starting
+        console.print("\n[dim]Verifying scraper access...[/dim]")
+        working_scrapers = []
+        for name, scraper in self.scrapers:
+            if name not in self.failed_scrapers:
+                if self._verify_scraper_access(name, scraper):
+                    console.print(f"[green]✓ {name}: Ready[/green]")
+                    working_scrapers.append((name, scraper))
+                # Failed scrapers already marked in _verify_scraper_access
+
+        if not working_scrapers:
+            console.print("\n[red]No working scrapers available! Check your API credentials.[/red]")
+            return
+
+        console.print(f"\n[cyan]{len(working_scrapers)} scraper(s) ready to use[/cyan]")
+
         # Confirm before proceeding
-        if not Confirm.ask("Proceed with scraping?", default=True):
+        if not Confirm.ask("\nProceed with scraping?", default=True):
             return
 
         # Initialize state
@@ -279,6 +336,8 @@ class RetroMaid:
                             clean_name = sanitize_filename(rom.filename, for_matching=True)
                             region = extract_region_from_filename(rom.filename)
 
+                            logger.debug(f"Searching for: '{clean_name}' (from '{rom.filename}')")
+
                             # Try all scrapers with smart switching
                             results = self._try_scrapers('search_by_name', clean_name, system, region)
 
@@ -309,7 +368,13 @@ class RetroMaid:
                                         # else: choice == "yes", continue processing
 
                         if not game:
-                            console.print(f"[yellow]No match found for:[/yellow] {rom.filename}")
+                            # Show what was actually searched for
+                            from utils.filename import sanitize_filename
+                            searched_name = sanitize_filename(rom.filename, for_matching=True)
+                            console.print(
+                                f"[yellow]No match found:[/yellow] {rom.filename} "
+                                f"[dim](searched: '{searched_name}' on {system})[/dim]"
+                            )
                             self.state_manager.mark_processed(
                                 system, rom.relative_path, False, "No match found"
                             )
@@ -466,7 +531,8 @@ class RetroMaid:
         return metadata
 
     def find_duplicates(self, system: str, resolve: bool = True, delete_files: bool = False) -> None:
-        """Find and optionally resolve duplicate ROMs"""
+        """Find and optionally resolve duplicate ROMs (DEPRECATED - use run_duplicate_finder)"""
+        console.print(f"\n[yellow]Note: Using CLI duplicate finder. Use main menu for full features.[/yellow]")
         console.print(f"\n[bold cyan]Scanning for duplicates:[/bold cyan] {system}")
 
         duplicates = self.scanner.find_duplicates(system)
@@ -486,6 +552,17 @@ class RetroMaid:
                     console.print(f"  - {rom.filename}")
             return
 
+        # IMPROVED: Ask about deletion if not specified via CLI
+        from rich.prompt import Confirm
+        if delete_files is False:  # Not explicitly set via CLI
+            console.print("\n[bold yellow]⚠ IMPORTANT: Choose deletion behavior[/bold yellow]")
+            console.print("  • [green]Yes[/green] - Physically DELETE duplicate ROM files from disk")
+            console.print("  • [red]No[/red] - Only remove from gamelist.xml (files stay on disk)")
+            delete_files = Confirm.ask(
+                "\n[bold]Delete ROM files from disk?[/bold]",
+                default=True
+            )
+
         # Interactive resolution
         strategy = self.config.get("duplicates.strategy", "ask")
         resolver = DuplicateResolver(strategy, delete_files=delete_files)
@@ -495,20 +572,44 @@ class RetroMaid:
 
         total_deleted_files = 0
         total_removed_from_xml = 0
+        total_groups_processed = 0
+        total_files_to_remove = 0
 
         for name, roms in duplicates.items():
             group = DuplicateGroup(roms)
             keep = resolver.resolve(group)
 
-            # Collect ROMs to remove
-            to_remove = [rom for rom in roms if rom not in keep]
+            # Collect ROMs to remove (DEDUPLICATE to avoid deleting same file twice)
+            # Use path-based comparison instead of object comparison
+            keep_paths = {str(rom.path) for rom in keep}
+            to_remove = []
+            seen_paths = set()
+            for rom in roms:
+                rom_path = str(rom.path)
+                if rom_path not in keep_paths and rom_path not in seen_paths:
+                    to_remove.append(rom)
+                    seen_paths.add(rom_path)
+
+            if not to_remove:
+                # No files to remove, skip this group
+                continue
+
+            total_groups_processed += 1
+            total_files_to_remove += len(to_remove)
+
+            # Show what's being kept vs removed
+            if resolver.default_action:
+                console.print(f"[dim]{name} ({len(roms)} files):[/dim]")
+                console.print(f"  [green]→ Keeping ({len(keep)}):[/green] {', '.join(r.filename for r in keep)}")
+                if to_remove:
+                    delete_action = "DELETING" if resolver.delete_files else "Removing from gamelist"
+                    console.print(f"  [red]→ {delete_action} ({len(to_remove)}):[/red] {', '.join(r.filename for r in to_remove)}")
 
             # Remove from gamelist
             for rom in to_remove:
                 if rom.relative_path in gamelist.games:
                     gamelist.remove_game(rom.relative_path)
                     total_removed_from_xml += 1
-                    console.print(f"[yellow]Removed from gamelist:[/yellow] {rom.filename}")
 
             # Delete physical files if requested
             if resolver.delete_files and to_remove:
@@ -516,16 +617,28 @@ class RetroMaid:
                 total_deleted_files += successful
 
                 if failed > 0:
-                    console.print(f"[red]Failed to delete {failed} files[/red]")
+                    console.print(f"  [yellow]Warning: {failed} file(s) could not be deleted[/yellow]")
 
         # Save gamelist
-        gamelist.save(backup=True)
+        if total_removed_from_xml > 0:
+            gamelist.save(backup=True)
+            console.print(f"\n[green]✓ Gamelist updated and saved[/green]")
 
         # Summary
-        console.print(f"\n[bold green]Duplicate resolution complete![/bold green]")
-        console.print(f"Removed from gamelist: {total_removed_from_xml}")
+        console.print(f"\n{'='*80}")
+        console.print(f"[bold green]DUPLICATE RESOLUTION COMPLETE[/bold green]")
+        console.print(f"{'='*80}")
+        console.print(f"  Groups processed: {total_groups_processed} of {len(duplicates)}")
+        console.print(f"  Files marked for removal: {total_files_to_remove}")
+        console.print(f"  Removed from gamelist: {total_removed_from_xml}")
         if resolver.delete_files:
-            console.print(f"Deleted files: {total_deleted_files}")
+            if total_deleted_files > 0:
+                console.print(f"  [bold red]✓ DELETED FILES: {total_deleted_files}[/bold red]")
+            else:
+                console.print(f"  [yellow]⚠ No files deleted (0 deletions)[/yellow]")
+        else:
+            console.print(f"  [yellow]⚠ FILES NOT DELETED - only gamelist updated[/yellow]")
+        console.print(f"{'='*80}")
 
 
 # CLI Commands
@@ -727,5 +840,248 @@ def convert_dos(interactive: bool, delete_zips: bool, no_defaults: bool, focus_z
             console.print("[yellow]No gamelist.xml found - create one by scraping[/yellow]")
 
 
+# Helper functions for menu system
+def run_scraper(retromaid: RetroMaid, system: str):
+    """Run metadata scraping for a system (called from menu)"""
+    retromaid.process_system(
+        system=system,
+        scrape_images=True,
+        scrape_videos=False,
+        force_reprocess=False
+    )
+
+
+def run_duplicate_finder(retromaid: RetroMaid, system: str):
+    """Run duplicate finder for a system (called from menu)"""
+    from rich.prompt import Confirm
+
+    duplicates = retromaid.scanner.find_duplicates(system)
+
+    if not duplicates:
+        console.print(f"\n[green]No duplicates found in {system}![/green]")
+        return
+
+    console.print(f"\n[yellow]Found {len(duplicates)} duplicate groups in {system}[/yellow]\n")
+
+    # Show duplicates
+    from rich.table import Table
+    for name, roms in duplicates.items():
+        table = Table(title=f"'{name}' ({len(roms)} files)", show_header=True)
+        table.add_column("#", width=4)
+        table.add_column("Filename")
+        table.add_column("Size", justify="right")
+        table.add_column("Path", style="dim")
+
+        for i, rom in enumerate(roms, 1):
+            size_mb = rom.size / (1024 * 1024)
+            table.add_row(
+                str(i),
+                rom.filename,
+                f"{size_mb:.2f} MB",
+                str(rom.path.parent)
+            )
+
+        console.print(table)
+
+    # Ask if they want to resolve
+    if Confirm.ask("\n[cyan]Resolve duplicates interactively?[/cyan]"):
+        from core.duplicate_detector import DuplicateResolver, DuplicateGroup
+        from core.xml_manager import GameListXML
+
+        # Ask about deletion
+        console.print("\n[bold yellow]⚠ IMPORTANT: Choose deletion behavior[/bold yellow]")
+        console.print("  • [green]Yes[/green] - Physically DELETE duplicate ROM files from disk")
+        console.print("  • [red]No[/red] - Only remove from gamelist.xml (files stay on disk)")
+        delete_files = Confirm.ask(
+            "\n[bold]Delete ROM files from disk?[/bold]",
+            default=True  # Changed to True for deduplication
+        )
+
+        if delete_files:
+            console.print("[yellow]⚠ Files will be PERMANENTLY deleted![/yellow]")
+
+        resolver = DuplicateResolver(strategy="ask", delete_files=delete_files)
+
+        system_path = retromaid.scanner.roms_base_path / system
+        gamelist = GameListXML(system_path / "gamelist.xml")
+
+        # Check if gamelist has any entries
+        if not gamelist.games and not delete_files:
+            console.print("\n[yellow]Warning: No gamelist.xml entries found![/yellow]")
+            console.print("Without file deletion, there's nothing to clean up.")
+            console.print("\nOptions:")
+            console.print("  1. Re-run and choose 'yes' for file deletion")
+            console.print("  2. First scrape metadata, then deduplicate")
+            if not Confirm.ask("\nContinue anyway?", default=False):
+                return
+
+        total_deleted_files = 0
+        total_removed_from_xml = 0
+        total_groups_processed = 0
+        total_files_to_remove = 0
+
+        for name, roms in duplicates.items():
+            group = DuplicateGroup(roms)
+            keep = resolver.resolve(group)
+
+            # Collect ROMs to remove (DEDUPLICATE to avoid deleting same file twice)
+            # Use path-based comparison instead of object comparison
+            keep_paths = {str(rom.path) for rom in keep}
+            to_remove = []
+            seen_paths = set()
+            for rom in roms:
+                rom_path = str(rom.path)
+                if rom_path not in keep_paths and rom_path not in seen_paths:
+                    to_remove.append(rom)
+                    seen_paths.add(rom_path)
+
+            if not to_remove:
+                # No files to remove, skip this group
+                continue  # Nothing to remove for this group
+
+            total_groups_processed += 1
+            total_files_to_remove += len(to_remove)
+
+            # Show what's being kept vs removed (always show for clarity)
+            if resolver.default_action:
+                # Using default action, show compact output
+                console.print(f"[dim]{name} ({len(roms)} files):[/dim]")
+                console.print(f"  [green]→ Keeping ({len(keep)}):[/green] {', '.join(r.filename for r in keep)}")
+                if to_remove:
+                    delete_action = "DELETING" if resolver.delete_files else "Removing from gamelist"
+                    console.print(f"  [red]→ {delete_action} ({len(to_remove)}):[/red] {', '.join(r.filename for r in to_remove)}")
+            else:
+                # Manual choice, show detailed output
+                console.print(f"\n[cyan]{name}:[/cyan]")
+                for rom in keep:
+                    console.print(f"  [green]✓ Keeping:[/green] {rom.filename}")
+                for rom in to_remove:
+                    action = "DELETING" if resolver.delete_files else "Removing from gamelist"
+                    console.print(f"  [red]✗ {action}:[/red] {rom.filename}")
+
+            # Remove from gamelist
+            for rom in to_remove:
+                if rom.relative_path in gamelist.games:
+                    gamelist.remove_game(rom.relative_path)
+                    total_removed_from_xml += 1
+
+            # Delete physical files if requested
+            if resolver.delete_files and to_remove:
+                deleted, failed = resolver.delete_rom_files(to_remove)
+                total_deleted_files += deleted
+                if failed > 0:
+                    console.print(f"  [yellow]Warning: {failed} file(s) could not be deleted[/yellow]")
+
+        # Save gamelist
+        if total_removed_from_xml > 0:
+            gamelist.save(backup=True)
+            console.print(f"\n[green]✓ Gamelist updated and saved[/green]")
+        elif total_groups_processed > 0:
+            console.print(f"\n[yellow]Note: No gamelist entries to remove (ROMs not yet scraped)[/yellow]")
+
+        console.print(f"\n{'='*80}")
+        console.print(f"[bold green]DUPLICATE RESOLUTION COMPLETE[/bold green]")
+        console.print(f"{'='*80}")
+        console.print(f"  Groups processed: {total_groups_processed} of {len(duplicates)}")
+        console.print(f"  Files marked for removal: {total_files_to_remove}")
+        console.print(f"  Removed from gamelist: {total_removed_from_xml}")
+
+        if resolver.delete_files:
+            if total_deleted_files > 0:
+                console.print(f"  [bold red]✓ DELETED FILES: {total_deleted_files}[/bold red]")
+            else:
+                console.print(f"  [yellow]⚠ No files deleted (0 deletions)[/yellow]")
+
+            if total_files_to_remove > total_deleted_files:
+                console.print(f"  [yellow]⚠ Failed deletions: {total_files_to_remove - total_deleted_files}[/yellow]")
+        else:
+            console.print(f"  [yellow]⚠ FILES NOT DELETED - only gamelist updated[/yellow]")
+            if total_removed_from_xml == 0:
+                console.print(f"  [yellow]⚠ No changes made (ROMs not in gamelist yet)[/yellow]")
+
+        console.print(f"{'='*80}")
+
+
+def run_dos_converter(retromaid: RetroMaid):
+    """Run DOS converter (called from menu)"""
+    from rich.prompt import Confirm
+
+    dos_path = retromaid.scanner.roms_base_path / "dos"
+    if not dos_path.exists():
+        console.print("\n[yellow]DOS system directory not found[/yellow]")
+        return
+
+    converter = DOSConverter(dos_path)
+    games = converter.scan_dos_games()
+
+    if not games:
+        console.print("\n[yellow]No DOS games found[/yellow]")
+        return
+
+    unconverted = [g for g in games if not g.is_converted]
+
+    if not unconverted:
+        console.print("\n[green]All DOS games are already converted![/green]")
+        return
+
+    console.print(f"\n[yellow]Found {len(unconverted)} games to convert[/yellow]\n")
+
+    # Show summary
+    from rich.table import Table
+    table = Table(title="DOS Games to Convert")
+    table.add_column("Game Name", style="cyan")
+    table.add_column("Type", style="magenta")
+
+    for game in unconverted[:20]:  # Show first 20
+        game_type = "ZIP" if game.path.suffix == '.zip' else "Folder"
+        table.add_row(game.name, game_type)
+
+    if len(unconverted) > 20:
+        table.add_row("...", f"[dim]and {len(unconverted) - 20} more[/dim]")
+
+    console.print(table)
+
+    if not Confirm.ask("\n[cyan]Proceed with conversion?[/cyan]", default=True):
+        return
+
+    # Convert
+    successful, failed = converter.batch_convert(
+        unconverted,
+        interactive=False,
+        delete_zips=None,
+        ask_for_defaults=True
+    )
+
+    console.print(f"\n[bold green]Conversion complete![/bold green]")
+    console.print(f"Successful: {successful}")
+    console.print(f"Failed: {failed}")
+
+
+def main_interactive():
+    """Run retroMaid in interactive menu mode"""
+    try:
+        retromaid = RetroMaid()
+
+        from utils.menu import create_main_menu
+        menu = create_main_menu(retromaid)
+        menu.run(is_main_menu=True)
+
+        console.print("\n[cyan]Thank you for using retroMaid![/cyan]")
+
+    except KeyboardInterrupt:
+        console.print("\n\n[yellow]Interrupted by user[/yellow]")
+    except Exception as e:
+        console.print(f"\n[red]Error: {e}[/red]")
+        import traceback
+        traceback.print_exc()
+
+
 if __name__ == '__main__':
-    cli()
+    import sys
+
+    # If no arguments provided, run interactive menu
+    # Otherwise, use Click CLI for backwards compatibility
+    if len(sys.argv) == 1:
+        main_interactive()
+    else:
+        cli()

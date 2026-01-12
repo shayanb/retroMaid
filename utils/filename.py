@@ -86,6 +86,13 @@ def sanitize_filename(filename: str, for_matching: bool = True) -> str:
         # Remove common suffixes like _prv, _demo, etc.
         name = re.sub(r'[_\-](prv|demo|preview|final|remastered)', '', name, flags=re.IGNORECASE)
 
+        # Remove ALL remaining parentheses content (region tags, etc.)
+        # This catches (E), (U), (JUE), (USA), etc. that weren't caught above
+        name = re.sub(r'\([^)]*\)', '', name)
+
+        # Normalize & to 'and' for better matching
+        name = re.sub(r'\s*&\s*', ' and ', name)
+
     # Replace underscores, hyphens, and dots with spaces
     # This is important for C64 games like "night_shift" or "nodes.of.yesod"
     name = re.sub(r'[_\-]', ' ', name)

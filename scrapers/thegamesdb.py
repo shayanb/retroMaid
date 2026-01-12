@@ -33,9 +33,11 @@ SYSTEM_ID_MAP = {
     'megadrive': 18,  # Sega Mega Drive (alias)
     'sms': 35,  # Sega Master System
     'gg': 20,  # Sega Game Gear
+    'sg1000': 4949,  # Sega SG-1000
+    'sega32x': 33,  # Sega 32X
+    '32x': 33,  # Sega 32X (alias)
     'dreamcast': 16,  # Sega Dreamcast
     'saturn': 17,  # Sega Saturn
-    '32x': 33,  # Sega 32X
     'segacd': 21,  # Sega CD
     # Sony
     'psx': 10,  # Sony Playstation
@@ -197,12 +199,14 @@ class TheGamesDB(BaseScraper):
         }
 
         try:
+            logger.debug(f"TheGamesDB searching for '{game_name}' on platform {platform_id}")
             data = self._make_request('Games/ByGameName', params)
 
             games = []
 
             if 'data' in data and 'games' in data['data']:
                 game_list = data['data']['games']
+                logger.debug(f"TheGamesDB returned {len(game_list)} results for '{game_name}'")
 
                 for game_data in game_list:
                     game = self._parse_game(game_data, data.get('include', {}))
@@ -217,6 +221,11 @@ class TheGamesDB(BaseScraper):
             return games
 
         except TheGamesDBError as e:
+            # Re-raise authentication and JSON errors so verification can detect them
+            error_str = str(e).lower()
+            if any(err in error_str for err in ['403', '401', 'unauthorized', 'credentials', 'api key', 'json', 'expecting value', 'decode']):
+                raise
+            # Log and return empty list for other errors
             logger.error(f"TheGamesDB error: {e}")
             return []
 

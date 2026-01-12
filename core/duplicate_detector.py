@@ -175,6 +175,7 @@ class DuplicateResolver:
 
         # Check if we have a default action
         if self.default_action:
+            console.print(f"[dim]Applying default action '{self.default_action}' to {group.get_summary()}[/dim]")
             return self._apply_default_action(group, self.default_action)
 
         console.print(f"\n[bold yellow]Duplicate ROMs found:[/bold yellow] {group.get_summary()}")
@@ -186,6 +187,9 @@ class DuplicateResolver:
                 default=False
             )
 
+        # Find most complete ROM for highlighting
+        most_complete = group.get_most_complete()
+
         # Create table
         table = Table(show_header=True, header_style="bold magenta")
         table.add_column("#", style="dim", width=4)
@@ -193,38 +197,50 @@ class DuplicateResolver:
         table.add_column("Size", justify="right")
         table.add_column("Has Metadata", justify="center")
         table.add_column("Completeness", justify="right")
+        table.add_column("Recommended", justify="center")
 
         for idx, rom in enumerate(group.roms, 1):
             has_metadata = "✓" if rom.has_metadata else "✗"
             completeness = f"{rom.metadata.calculate_completeness():.0f}%" if rom.metadata else "0%"
             size_mb = rom.size / (1024 * 1024)
+            is_recommended = "⭐" if rom == most_complete else ""
+
+            # Highlight the recommended row
+            style = "bold green" if rom == most_complete else None
 
             table.add_row(
                 str(idx),
                 rom.filename,
                 f"{size_mb:.1f} MB",
                 has_metadata,
-                completeness
+                completeness,
+                is_recommended,
+                style=style
             )
 
         console.print(table)
 
         # Prompt user
-        console.print("\n[bold]Options:[/bold]")
-        console.print("  [1-N] - Keep specific ROM(s) (comma-separated)")
-        console.print("  [a]   - Keep all")
-        console.print("  [m]   - Keep most complete")
-        console.print("  [f]   - Keep first")
-        console.print("  [s]   - Skip (keep all)")
-        console.print("  [da]  - Default: keep all for remaining")
-        console.print("  [dm]  - Default: keep most complete for remaining")
-        console.print("  [df]  - Default: keep first for remaining")
+        console.print("\n[bold cyan]Options:[/bold cyan]")
+        console.print("  [bold yellow][1-N][/bold yellow] - Keep specific ROM(s) (comma-separated, e.g. '1,3')")
+        console.print("")
+        console.print("  [bold green]Single group actions:[/bold green]")
+        console.print("    [bold]a[/bold] - Keep all")
+        console.print("    [bold]m[/bold] - Keep most complete (based on metadata)")
+        console.print("    [bold]f[/bold] - Keep first")
+        console.print("    [bold]s[/bold] - Skip (keep all)")
+        console.print("")
+        console.print("  [bold magenta]Default for all remaining groups:[/bold magenta]")
+        console.print("    [bold]da[/bold] - Default: keep all for remaining")
+        console.print("    [bold]dm[/bold] - Default: keep most complete for remaining")
+        console.print("    [bold]df[/bold] - Default: keep first for remaining")
 
-        choice = Prompt.ask("\nYour choice", default="m")
+        choice = Prompt.ask("\n[bold]Your choice[/bold]", default="m")
 
         # Handle default actions
         if choice.startswith('d'):
             self.default_action = choice[1:]  # Remove 'd' prefix
+            console.print(f"[bold green]✓ Default action set to '{self.default_action}' for all remaining groups[/bold green]")
             return self._apply_default_action(group, self.default_action)
 
         # Handle regular choices
@@ -232,6 +248,8 @@ class DuplicateResolver:
 
     def _apply_default_action(self, group: DuplicateGroup, action: str) -> List[ROMFile]:
         """Apply default action to a group"""
+        # Don't print here - let the caller handle output for consistency
+
         if action == 'a':
             return group.roms
         elif action == 'm':
@@ -244,16 +262,23 @@ class DuplicateResolver:
 
     def _apply_choice(self, group: DuplicateGroup, choice: str) -> List[ROMFile]:
         """Apply user choice to a group"""
+        from rich.console import Console
+        console = Console()
+
         choice = choice.lower().strip()
 
         if choice == 'a' or choice == 's':
+            console.print(f"[green]→ Keeping all {len(group.roms)} ROMs[/green]")
             return group.roms
 
         elif choice == 'm':
             most_complete = group.get_most_complete()
+            if most_complete:
+                console.print(f"[green]→ Keeping:[/green] {most_complete.filename}")
             return [most_complete] if most_complete else []
 
         elif choice == 'f':
+            console.print(f"[green]→ Keeping:[/green] {group.roms[0].filename}")
             return [group.roms[0]]
 
         else:
@@ -264,7 +289,16 @@ class DuplicateResolver:
                 for idx in indices:
                     if 1 <= idx <= len(group.roms):
                         selected.append(group.roms[idx - 1])
-                return selected if selected else group.roms
+
+                if selected:
+                    console.print(f"[green]→ Keeping {len(selected)} ROM(s):[/green]")
+                    for rom in selected:
+                        console.print(f"    {rom.filename}")
+                    return selected
+                else:
+                    console.print("[yellow]→ No valid selections, keeping all[/yellow]")
+                    return group.roms
             except ValueError:
                 logger.warning(f"Invalid choice: {choice}, keeping all")
+                console.print(f"[yellow]→ Invalid choice, keeping all[/yellow]")
                 return group.roms

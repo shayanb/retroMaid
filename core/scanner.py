@@ -4,6 +4,7 @@ ROM scanner to identify files and missing metadata
 from pathlib import Path
 from typing import Dict, List, Optional, Set
 from dataclasses import dataclass
+import re
 
 from core.xml_manager import GameListXML, GameMetadata
 from core.hasher import ROMHasher
@@ -13,47 +14,94 @@ from utils.logger import get_logger
 logger = get_logger()
 
 
-# Batocera system IDs and their ROM extensions
+# Fallback extensions if _info.txt is not found
+# Batocera system IDs and their ROM extensions (with .7z added)
 SYSTEM_EXTENSIONS = {
-    'nes': ['.nes', '.zip'],
-    'snes': ['.sfc', '.smc', '.zip'],
-    'n64': ['.n64', '.z64', '.v64', '.zip'],
-    'gb': ['.gb', '.zip'],
-    'gbc': ['.gbc', '.zip'],
-    'gba': ['.gba', '.zip'],
-    'md': ['.md', '.smd', '.gen', '.bin', '.zip'],  # Sega Genesis/Mega Drive
-    'sms': ['.sms', '.zip'],  # Sega Master System
-    'gg': ['.gg', '.zip'],  # Game Gear
-    'pce': ['.pce', '.zip'],  # PC Engine
-    'psx': ['.cue', '.pbp', '.chd'],  # PlayStation (multi-file games)
-    'ps2': ['.iso', '.chd'],
-    'psp': ['.iso', '.cso'],
-    'dreamcast': ['.cdi', '.gdi', '.chd'],
-    'saturn': ['.cue', '.chd'],
-    'arcade': ['.zip'],
-    'mame': ['.zip'],
-    'fba': ['.zip'],
-    'atari2600': ['.a26', '.bin', '.zip'],
-    'atari7800': ['.a78', '.bin', '.zip'],
-    'lynx': ['.lnx', '.zip'],
-    'jaguar': ['.j64', '.jag', '.zip'],
-    'ngp': ['.ngp', '.zip'],  # Neo Geo Pocket
-    'ngpc': ['.ngc', '.zip'],  # Neo Geo Pocket Color
-    'wonderswan': ['.ws', '.zip'],
-    'wonderswancolor': ['.wsc', '.zip'],
+    'nes': ['.7z', '.nes', '.zip'],
+    'snes': ['.7z', '.sfc', '.smc', '.zip'],
+    'n64': ['.7z', '.n64', '.z64', '.v64', '.zip'],
+    'gb': ['.7z', '.gb', '.zip'],
+    'gbc': ['.7z', '.gbc', '.zip'],
+    'gba': ['.7z', '.gba', '.zip'],
+    'md': ['.7z', '.md', '.smd', '.gen', '.bin', '.zip'],  # Sega Genesis/Mega Drive
+    'sms': ['.7z', '.sms', '.zip'],  # Sega Master System
+    'gg': ['.7z', '.gg', '.zip'],  # Game Gear
+    'pce': ['.7z', '.pce', '.zip'],  # PC Engine
+    'psx': ['.7z', '.cue', '.pbp', '.chd'],  # PlayStation (multi-file games)
+    'ps2': ['.7z', '.iso', '.chd'],
+    'psp': ['.7z', '.iso', '.cso'],
+    'dreamcast': ['.7z', '.cdi', '.gdi', '.chd'],
+    'saturn': ['.7z', '.cue', '.chd'],
+    'arcade': ['.7z', '.zip'],
+    'mame': ['.7z', '.zip'],
+    'fba': ['.7z', '.zip'],
+    'atari2600': ['.7z', '.a26', '.bin', '.zip'],
+    'atari7800': ['.7z', '.a78', '.bin', '.zip'],
+    'lynx': ['.7z', '.lnx', '.zip'],
+    'jaguar': ['.7z', '.j64', '.jag', '.zip'],
+    'ngp': ['.7z', '.ngp', '.zip'],  # Neo Geo Pocket
+    'ngpc': ['.7z', '.ngc', '.zip'],  # Neo Geo Pocket Color
+    'wonderswan': ['.7z', '.ws', '.zip'],
+    'wonderswancolor': ['.7z', '.wsc', '.zip'],
     # Commodore systems
-    'c64': ['.d64', '.t64', '.prg', '.crt', '.tap', '.g64', '.zip'],  # Commodore 64
-    'vic20': ['.prg', '.crt', '.tap', '.a0', '.20', '.zip'],  # VIC-20
-    'amiga': ['.adf', '.ipf', '.dms', '.adz', '.lha', '.zip'],  # Amiga
-    'amigacd32': ['.cue', '.iso', '.chd'],  # Amiga CD32
+    'c64': ['.7z', '.d64', '.t64', '.prg', '.crt', '.tap', '.g64', '.zip'],  # Commodore 64
+    'vic20': ['.7z', '.prg', '.crt', '.tap', '.a0', '.20', '.zip'],  # VIC-20
+    'amiga': ['.7z', '.adf', '.ipf', '.dms', '.adz', '.lha', '.zip'],  # Amiga
+    'amigacd32': ['.7z', '.cue', '.iso', '.chd'],  # Amiga CD32
     # Other computer systems
-    'zxspectrum': ['.z80', '.sna', '.tap', '.tzx', '.dsk', '.trd', '.zip'],  # ZX Spectrum
-    'amstradcpc': ['.dsk', '.sna', '.cdt', '.zip'],  # Amstrad CPC
-    'msx': ['.rom', '.dsk', '.cas', '.mx1', '.mx2', '.zip'],  # MSX
-    'msx1': ['.rom', '.dsk', '.cas', '.mx1', '.zip'],  # MSX1
-    'msx2': ['.rom', '.dsk', '.cas', '.mx2', '.zip'],  # MSX2
+    'zxspectrum': ['.7z', '.z80', '.sna', '.tap', '.tzx', '.dsk', '.trd', '.zip'],  # ZX Spectrum
+    'amstradcpc': ['.7z', '.dsk', '.sna', '.cdt', '.zip'],  # Amstrad CPC
+    'msx': ['.7z', '.rom', '.dsk', '.cas', '.mx1', '.mx2', '.zip'],  # MSX
+    'msx1': ['.7z', '.rom', '.dsk', '.cas', '.mx1', '.zip'],  # MSX1
+    'msx2': ['.7z', '.rom', '.dsk', '.cas', '.mx2', '.zip'],  # MSX2
+    'sq1000': ['.7z', '.rom', '.zip'],  # Sega SQ-1000
     'dos': ['.exe', '.com', '.bat'],  # DOS (inside .pc folders)
 }
+
+
+def read_system_extensions_from_info(system_path: Path) -> Optional[List[str]]:
+    """
+    Read supported ROM extensions from _info.txt file in system directory
+
+    Args:
+        system_path: Path to system ROM directory
+
+    Returns:
+        List of extensions (with leading dots) or None if not found
+    """
+    info_file = system_path / "_info.txt"
+
+    if not info_file.exists():
+        return None
+
+    try:
+        content = info_file.read_text()
+
+        # Look for extension pattern like: .7z .nes .zip
+        # Usually appears as a space-separated list
+        match = re.search(r'(?:extensions?|formats?)[:\s]+([.\w\s]+)', content, re.IGNORECASE)
+
+        if match:
+            ext_string = match.group(1).strip()
+            # Extract all .ext patterns
+            extensions = re.findall(r'\.\w+', ext_string)
+            if extensions:
+                logger.debug(f"Read extensions from _info.txt: {extensions}")
+                return extensions
+
+        # Alternative: just find all .ext in the file
+        extensions = re.findall(r'\.\w+', content)
+        if extensions:
+            # Filter out common non-extension patterns
+            valid_exts = [ext for ext in extensions if len(ext) <= 6 and ext not in ['.txt', '.xml']]
+            if valid_exts:
+                logger.debug(f"Extracted extensions from _info.txt: {valid_exts}")
+                return valid_exts
+
+    except Exception as e:
+        logger.warning(f"Error reading _info.txt: {e}")
+
+    return None
 
 
 @dataclass
@@ -123,7 +171,13 @@ class ROMScanner:
         gamelist = GameListXML(gamelist_path) if gamelist_path.exists() else None
 
         # Get valid extensions for this system
-        extensions = SYSTEM_EXTENSIONS.get(system, ['.zip'])
+        # Try reading from _info.txt first, then fall back to hardcoded
+        extensions = read_system_extensions_from_info(system_path)
+        if extensions:
+            logger.info(f"Using extensions from _info.txt for {system}: {extensions}")
+        else:
+            extensions = SYSTEM_EXTENSIONS.get(system, ['.7z', '.zip'])
+            logger.debug(f"Using fallback extensions for {system}: {extensions}")
 
         # Directories to exclude from ROM scanning
         excluded_dirs = {'images', 'videos', 'manuals', 'music', 'wheels', 'marquees'}
@@ -249,10 +303,23 @@ class ROMScanner:
         """
         all_roms = self.scan_system(system, compute_hashes=False)
 
+        # DEDUPLICATE: Ensure each unique file path only appears once
+        # (fixes issue with symlinks/hardlinks being scanned multiple times)
+        seen_paths = {}
+        unique_roms = []
+
+        for rom in all_roms:
+            rom_path = str(rom.path)
+            if rom_path not in seen_paths:
+                seen_paths[rom_path] = rom
+                unique_roms.append(rom)
+            else:
+                logger.debug(f"Skipping duplicate scan of: {rom_path}")
+
         # Group by sanitized name
         name_groups: Dict[str, List[ROMFile]] = {}
 
-        for rom in all_roms:
+        for rom in unique_roms:
             sanitized = sanitize_filename(rom.filename, for_matching=True).lower()
 
             if sanitized not in name_groups:
