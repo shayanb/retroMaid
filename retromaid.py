@@ -452,27 +452,36 @@ class RetroMaid:
         if progress and task is not None:
             progress.stop_task(task)
 
+        # Create a new console instance to avoid progress bar interference
+        from rich.console import Console
+        prompt_console = Console()
+
         # Clear formatting and show prompt
-        console.print()  # Blank line
-        console.print(f"[yellow]Low confidence match for:[/yellow] {rom_filename}")
-        console.print(f"[bold]Found:[/bold] {game.name} [dim](confidence: {game.confidence:.0f}%)[/dim]")
+        prompt_console.print()  # Blank line
+        prompt_console.print(f"[yellow]Low confidence match for:[/yellow] {rom_filename}")
+        prompt_console.print(f"[bold]Found:[/bold] {game.name} [dim](confidence: {game.confidence:.0f}%)[/dim]")
 
         if game.description:
             # Limit description length
             desc = game.description[:150] + "..." if len(game.description) > 150 else game.description
-            console.print(f"[dim]{desc}[/dim]")
+            prompt_console.print(f"[dim]{desc}[/dim]")
 
-        console.print()  # Blank line
-        console.print("[dim]Options: [y]es / [n]o (skip) / [s]top scraping[/dim]")
+        prompt_console.print()  # Blank line
+        prompt_console.print("[bold cyan]Options:[/bold cyan]")
+        prompt_console.print("  [bold]y[/bold] - Yes, accept this match")
+        prompt_console.print("  [bold]n[/bold] - No, skip this ROM")
+        prompt_console.print("  [bold]s[/bold] - Stop scraping and save progress")
+        prompt_console.print()
 
         choice = Prompt.ask(
-            "Accept match?",
+            "[bold]Your choice[/bold]",
             choices=["y", "n", "s"],
             default="y",
-            show_choices=False
+            show_choices=False,
+            console=prompt_console
         )
 
-        console.print()  # Blank line after
+        prompt_console.print()  # Blank line after
 
         # Resume progress bar
         if progress and task is not None:
@@ -487,12 +496,20 @@ class RetroMaid:
 
     def _create_metadata_from_game(self, rom, game, media_paths: dict) -> GameMetadata:
         """Create GameMetadata from scraper game result"""
+        # Helper to safely convert values to strings
+        def to_str(value):
+            """Convert value to string, handling None and non-string types"""
+            if value is None:
+                return None
+            return str(value) if not isinstance(value, str) else value
+
         # Convert release date format
         releasedate = None
         if game.release_date:
             try:
                 # Convert YYYY-MM-DD to YYYYMMDDTHHMMSS
-                date_parts = game.release_date.split('-')
+                date_str = to_str(game.release_date)
+                date_parts = date_str.split('-')
                 if len(date_parts) == 3:
                     releasedate = f"{date_parts[0]}{date_parts[1]}{date_parts[2]}T000000"
             except:
@@ -500,15 +517,15 @@ class RetroMaid:
 
         metadata = GameMetadata(
             path=rom.relative_path,
-            name=game.name,
-            desc=game.description,
+            name=to_str(game.name),
+            desc=to_str(game.description),
             releasedate=releasedate,
-            developer=game.developer,
-            publisher=game.publisher,
-            genre=game.genre,
-            players=game.players,
-            region=game.region,
-            lang=game.language or self.config.get("matching.language", "en"),
+            developer=to_str(game.developer),
+            publisher=to_str(game.publisher),
+            genre=to_str(game.genre),
+            players=to_str(game.players),
+            region=to_str(game.region),
+            lang=to_str(game.language) or self.config.get("matching.language", "en"),
         )
 
         # Add media paths

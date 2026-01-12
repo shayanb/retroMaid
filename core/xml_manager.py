@@ -292,7 +292,8 @@ class GameListXML:
     def _add_element(self, parent: etree._Element, tag: str, text: str) -> None:
         """Helper to add a child element with text"""
         elem = etree.SubElement(parent, tag)
-        elem.text = text
+        # Convert to string if needed (handles int, float, etc. from scrapers)
+        elem.text = str(text) if text is not None else ""
 
     def get_games_missing_metadata(self, fields: Optional[List[str]] = None) -> List[GameMetadata]:
         """

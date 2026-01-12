@@ -206,71 +206,49 @@ def create_main_menu(retromaid) -> Menu:
 
 def scrape_system_interactive(retromaid):
     """Interactive scrape system function (called directly from main menu)"""
-    import logging
-
     systems = retromaid.scanner.get_available_systems()
 
     if not systems:
         console.print("\n[yellow]No systems found[/yellow]")
         return
 
-    # Temporarily suppress ALL loggers while getting stats
-    import logging
-    # Save current logging levels
-    loggers_to_restore = []
-    for name in logging.root.manager.loggerDict:
-        logger = logging.getLogger(name)
-        loggers_to_restore.append((logger, logger.level))
-        logger.setLevel(logging.ERROR)
+    # Show available systems WITHOUT stats (too slow for 195+ systems)
+    console.print(f"\n[bold]Available systems ({len(systems)} total):[/bold]")
+    console.print("[dim]Type system name to scrape (e.g., 'c64', 'megadrive', 'nes')[/dim]\n")
 
-    # Also suppress root logger
-    root_logger = logging.getLogger()
-    old_root_level = root_logger.level
-    root_logger.setLevel(logging.ERROR)
+    # Show systems in columns
+    sorted_systems = sorted(systems)
+    num_columns = 4
+    systems_per_column = (len(sorted_systems) + num_columns - 1) // num_columns
 
-    try:
-        # Build system list with stats
-        system_data = []
-        for system in systems:
-            stats = retromaid.scanner.get_statistics(system)
-            system_data.append((system, stats))
-    finally:
-        # Restore all log levels
-        root_logger.setLevel(old_root_level)
-        for logger, level in loggers_to_restore:
-            logger.setLevel(level)
+    for row in range(systems_per_column):
+        line_parts = []
+        for col in range(num_columns):
+            idx = col * systems_per_column + row
+            if idx < len(sorted_systems):
+                line_parts.append(f"[cyan]{sorted_systems[idx]:20}[/cyan]")
+        console.print("  " + "  ".join(line_parts))
 
-    # Show available systems
-    console.print("\n[bold]Available systems (type name or number):[/bold]")
-    for i, (system, stats) in enumerate(system_data, 1):
-        console.print(
-            f"  {i:3}. [cyan]{system:20}[/cyan] {stats['total_roms']:4} ROMs "
-            f"({stats['without_metadata']} missing metadata)"
-        )
-
-    # Ask which system (allow name or number)
-    console.print("\n[dim]Tip: Type system name (e.g., 'sg1000') or number (e.g., '42')[/dim]")
+    # Ask which system
+    console.print()
     choice = Prompt.ask("[cyan]Select system[/cyan]")
 
-    # Check if it's a number
-    try:
-        num = int(choice)
-        if 1 <= num <= len(system_data):
-            system = system_data[num - 1][0]
-        else:
-            console.print(f"[red]Invalid number. Must be 1-{len(system_data)}[/red]")
-            return
-    except ValueError:
-        # It's a name
-        if choice in systems:
-            system = choice
-        else:
-            console.print(f"[red]Unknown system: {choice}[/red]")
-            return
+    # Validate system name
+    if choice in systems:
+        system = choice
+    else:
+        console.print(f"[red]Unknown system: {choice}[/red]")
+        console.print(f"[dim]Hint: System names are case-sensitive. Try one from the list above.[/dim]")
+        return
 
     # Import and run scraper
-    from retromaid import run_scraper
-    run_scraper(retromaid, system)
+    import sys
+    # Access run_scraper from __main__ module (retromaid.py when running)
+    main_module = sys.modules.get('__main__')
+    if main_module and hasattr(main_module, 'run_scraper'):
+        main_module.run_scraper(retromaid, system)
+    else:
+        console.print("[red]Error: run_scraper function not found[/red]")
 
 
 def find_duplicates_interactive(retromaid):
@@ -287,14 +265,22 @@ def find_duplicates_interactive(retromaid):
     )
 
     # Import and run duplicate finder
-    from retromaid import run_duplicate_finder
-    run_duplicate_finder(retromaid, system)
+    import sys
+    main_module = sys.modules.get('__main__')
+    if main_module and hasattr(main_module, 'run_duplicate_finder'):
+        main_module.run_duplicate_finder(retromaid, system)
+    else:
+        console.print("[red]Error: run_duplicate_finder function not found[/red]")
 
 
 def dos_converter_interactive(retromaid):
     """Interactive DOS converter function (called directly from main menu)"""
-    from retromaid import run_dos_converter
-    run_dos_converter(retromaid)
+    import sys
+    main_module = sys.modules.get('__main__')
+    if main_module and hasattr(main_module, 'run_dos_converter'):
+        main_module.run_dos_converter(retromaid)
+    else:
+        console.print("[red]Error: run_dos_converter function not found[/red]")
 
 
 def show_status_interactive(retromaid):

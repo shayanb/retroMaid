@@ -184,28 +184,47 @@ class ROMScanner:
 
         # Find ROM files
         rom_files = []
+        seen_paths = set()  # Deduplicate in case both .ext and .EXT match the same file
 
         for ext in extensions:
-            # For .cue files, look in subdirectories (PSX multi-disc games)
-            if ext == '.cue':
-                for cue_file in system_path.rglob(f'*{ext}'):
-                    # Skip if in excluded directories
-                    if any(excluded_dir in cue_file.parts for excluded_dir in excluded_dirs):
-                        continue
+            # Check both lowercase and uppercase versions (for case-insensitive matching)
+            # This handles .t64 vs .T64, .zip vs .ZIP, etc.
+            extensions_to_check = [ext.lower(), ext.upper()]
+            if ext != ext.lower() and ext != ext.upper():
+                # Also check the original case if it's mixed case
+                extensions_to_check.append(ext)
 
-                    rom_files.append(self._create_rom_file(
-                        cue_file, system_path, system, gamelist, compute_hashes
-                    ))
-            else:
-                # For other files, search in root and subdirectories
-                for rom_file in system_path.rglob(f'*{ext}'):
-                    # Skip if in excluded directories
-                    if any(excluded_dir in rom_file.parts for excluded_dir in excluded_dirs):
-                        continue
+            for ext_variant in extensions_to_check:
+                # For .cue files, look in subdirectories (PSX multi-disc games)
+                if ext.lower() == '.cue':
+                    for cue_file in system_path.rglob(f'*{ext_variant}'):
+                        # Skip if in excluded directories
+                        if any(excluded_dir in cue_file.parts for excluded_dir in excluded_dirs):
+                            continue
 
-                    rom_files.append(self._create_rom_file(
-                        rom_file, system_path, system, gamelist, compute_hashes
-                    ))
+                        # Skip if we've already seen this file
+                        if str(cue_file) in seen_paths:
+                            continue
+                        seen_paths.add(str(cue_file))
+
+                        rom_files.append(self._create_rom_file(
+                            cue_file, system_path, system, gamelist, compute_hashes
+                        ))
+                else:
+                    # For other files, search in root and subdirectories
+                    for rom_file in system_path.rglob(f'*{ext_variant}'):
+                        # Skip if in excluded directories
+                        if any(excluded_dir in rom_file.parts for excluded_dir in excluded_dirs):
+                            continue
+
+                        # Skip if we've already seen this file
+                        if str(rom_file) in seen_paths:
+                            continue
+                        seen_paths.add(str(rom_file))
+
+                        rom_files.append(self._create_rom_file(
+                            rom_file, system_path, system, gamelist, compute_hashes
+                        ))
 
         logger.info(f"Found {len(rom_files)} ROM files for {system}")
 
