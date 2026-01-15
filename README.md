@@ -269,6 +269,16 @@ Contributions welcome! Areas for improvement:
 - Docker container
 - Automated testing
 
+## Support
+
+If retroMaid has helped organize your ROM collection, consider supporting development:
+
+<a href="https://buymeacoffee.com/pangana" target="_blank">
+  <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="50">
+</a>
+
+Your support helps keep the project maintained and improved!
+
 ## License
 
 MIT License - see LICENSE file

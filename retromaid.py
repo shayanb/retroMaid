@@ -31,9 +31,10 @@ console = Console()
 class RetroMaid:
     """Main retroMaid application"""
 
-    def __init__(self, config_path: str = "config.yaml"):
+    def __init__(self, config_path: str = "config.yaml", roms_path_override: str = None):
         """Initialize retroMaid"""
         self.config = Config(config_path)
+        self.config_path = config_path
         self.logger = Logger.setup(
             log_file=self.config.get("logging.log_file", "retromaid.log"),
             level=self.config.get("logging.level", "INFO"),
@@ -41,11 +42,20 @@ class RetroMaid:
         )
 
         # Initialize components
-        roms_path = self.config.get("roms_path")
+        roms_path = roms_path_override or self.config.get("roms_path")
         if not roms_path:
-            raise ValueError("roms_path not configured")
+            raise ValueError("roms_path not configured in config.yaml")
 
-        self.scanner = ROMScanner(Path(roms_path))
+        # Check if path exists before initializing scanner
+        roms_path_obj = Path(roms_path)
+        if not roms_path_obj.exists():
+            raise FileNotFoundError(
+                f"ROMs path not accessible: {roms_path}\n"
+                f"This usually means the network share is not mounted or the path is incorrect.\n"
+                f"Configure the correct path in: {Path(config_path).absolute()}"
+            )
+
+        self.scanner = ROMScanner(roms_path_obj)
         self.state_manager = StateManager(
             self.config.get("resume.checkpoint_file", ".retromaid_checkpoint.json")
         )
@@ -658,6 +668,27 @@ class RetroMaid:
         console.print(f"{'='*80}")
 
 
+def create_app() -> RetroMaid:
+    """Create RetroMaid instance with proper error handling for CLI"""
+    try:
+        return RetroMaid()
+    except FileNotFoundError as e:
+        console.print(f"\n[red bold]Error: ROMs path not accessible[/red bold]")
+        console.print(f"\n[yellow]{e}[/yellow]")
+        console.print(f"\n[cyan]To fix:[/cyan]")
+        console.print(f"  1. Mount your network share (if using SMB/NFS)")
+        console.print(f"  2. Or edit [bold]config.yaml[/bold] and set the correct [bold]roms_path[/bold]")
+        console.print(f"\n[dim]For interactive mode with manual path entry, run: python retromaid.py[/dim]")
+        raise SystemExit(1)
+    except ValueError as e:
+        console.print(f"\n[red bold]Configuration Error[/red bold]")
+        console.print(f"\n[yellow]{e}[/yellow]")
+        console.print(f"\n[cyan]To fix:[/cyan]")
+        console.print(f"  Edit [bold]config.yaml[/bold] and set [bold]roms_path[/bold] to your ROMs directory")
+        console.print(f"  Example: [dim]roms_path: \"/Volumes/share/roms\"[/dim]")
+        raise SystemExit(1)
+
+
 # CLI Commands
 @click.group()
 @click.version_option(version="1.0.0")
@@ -670,7 +701,7 @@ def cli():
 @click.option('--system', '-s', help='System to list (e.g., psx, nes)')
 def list_systems(system: Optional[str]):
     """List available systems or scan a specific system"""
-    app = RetroMaid()
+    app = create_app()
 
     if system:
         app.scan_system(system)
@@ -688,7 +719,7 @@ def list_systems(system: Optional[str]):
 @click.option('--force', is_flag=True, help='Reprocess already processed ROMs')
 def scrape(system: str, no_images: bool, videos: bool, force: bool):
     """Scrape metadata for a system"""
-    app = RetroMaid()
+    app = create_app()
     app.process_system(
         system,
         scrape_images=not no_images,
@@ -703,7 +734,7 @@ def scrape(system: str, no_images: bool, videos: bool, force: bool):
 @click.option('--delete', is_flag=True, help='Delete ROM files from disk (not just gamelist)')
 def duplicates(system: str, resolve: bool, delete: bool):
     """Find duplicate ROMs"""
-    app = RetroMaid()
+    app = create_app()
     app.find_duplicates(system, resolve=resolve, delete_files=delete)
 
 
@@ -711,7 +742,7 @@ def duplicates(system: str, resolve: bool, delete: bool):
 @click.option('--system', '-s', help='System to show status for')
 def status(system: Optional[str]):
     """Show processing status"""
-    app = RetroMaid()
+    app = create_app()
 
     if system:
         summary = app.state_manager.get_summary(system)
@@ -742,7 +773,7 @@ def status(system: Optional[str]):
 @click.confirmation_option(prompt='Are you sure you want to clear the checkpoint?')
 def clear(system: Optional[str]):
     """Clear processing checkpoint"""
-    app = RetroMaid()
+    app = create_app()
     app.state_manager.clear(system)
     console.print("[green]Checkpoint cleared![/green]")
 
@@ -765,7 +796,7 @@ def convert_dos(interactive: bool, delete_zips: bool, no_defaults: bool, focus_z
       retromaid.py convert-dos --no-interactive --delete-zips  # Batch, delete ZIPs
       retromaid.py convert-dos --focus-zips       # Only convert ZIPs
     """
-    app = RetroMaid()
+    app = create_app()
 
     dos_path = app.scanner.roms_base_path / "dos"
 
@@ -1076,14 +1107,86 @@ def run_dos_converter(retromaid: RetroMaid):
 
 def main_interactive():
     """Run retroMaid in interactive menu mode"""
-    try:
-        retromaid = RetroMaid()
+    from rich.panel import Panel
+    from utils.menu import ASCII_ART
 
+    # Always show ASCII art header first
+    console.clear()
+    console.print(ASCII_ART)
+
+    retromaid = None
+    roms_path_override = None
+
+    while retromaid is None:
+        try:
+            retromaid = RetroMaid(roms_path_override=roms_path_override)
+
+        except FileNotFoundError as e:
+            # ROMs path not accessible - offer to enter manually
+            console.print()
+            console.print(Panel(
+                f"[red bold]ROMs Path Not Accessible[/red bold]\n\n"
+                f"[yellow]The configured ROMs path could not be found.[/yellow]\n\n"
+                f"This usually happens when:\n"
+                f"  • The network share is not mounted\n"
+                f"  • The path in config.yaml is incorrect\n"
+                f"  • The drive/volume is not connected\n\n"
+                f"[cyan]To fix permanently:[/cyan]\n"
+                f"  Edit [bold]config.yaml[/bold] and set the correct [bold]roms_path[/bold]\n\n"
+                f"[dim]Current configured path: {Config('config.yaml').get('roms_path', 'Not set')}[/dim]",
+                title="Configuration Error",
+                border_style="red"
+            ))
+
+            console.print()
+            choice = Prompt.ask(
+                "[cyan]Would you like to enter the ROMs path manually?[/cyan]",
+                choices=["y", "n"],
+                default="n"
+            )
+
+            if choice == "y":
+                roms_path_override = Prompt.ask("[cyan]Enter ROMs path[/cyan]")
+                # Strip quotes that user might have copy-pasted
+                roms_path_override = roms_path_override.strip().strip("'\"")
+                if not Path(roms_path_override).exists():
+                    console.print(f"[red]Path does not exist: {roms_path_override}[/red]")
+                    roms_path_override = None
+                    continue
+                # Try again with the new path
+                continue
+            else:
+                console.print("\n[dim]Please mount the network share or update config.yaml and try again.[/dim]")
+                return
+
+        except ValueError as e:
+            # Config error (e.g., roms_path not set at all)
+            console.print()
+            console.print(Panel(
+                f"[red bold]Configuration Error[/red bold]\n\n"
+                f"[yellow]{e}[/yellow]\n\n"
+                f"[cyan]To fix:[/cyan]\n"
+                f"  1. Open [bold]config.yaml[/bold]\n"
+                f"  2. Set [bold]roms_path[/bold] to your ROMs directory\n"
+                f"     Example: [dim]roms_path: \"/Volumes/share/roms\"[/dim]\n"
+                f"  3. Run retroMaid again",
+                title="Configuration Error",
+                border_style="red"
+            ))
+            return
+
+        except KeyboardInterrupt:
+            console.print("\n\n[yellow]Interrupted by user[/yellow]")
+            return
+
+    # Successfully initialized - run the menu
+    try:
         from utils.menu import create_main_menu
         menu = create_main_menu(retromaid)
         menu.run(is_main_menu=True)
 
         console.print("\n[cyan]Thank you for using retroMaid![/cyan]")
+        console.print("[dim]If you found this useful, consider supporting: [link=https://buymeacoffee.com/pangana]buymeacoffee.com/pangana[/link] ☕[/dim]")
 
     except KeyboardInterrupt:
         console.print("\n\n[yellow]Interrupted by user[/yellow]")

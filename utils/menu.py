@@ -21,6 +21,7 @@ ASCII_ART = """
  ╚═╝  ╚═╝╚══════╝   ╚═╝   ╚═╝  ╚═╝ ╚═════╝ ╚═╝     ╚═╝╚═╝  ╚═╝╚═╝╚═════╝
 [/cyan]
 [dim]           Batocera ROM Metadata Scraper & Manager[/dim]
+[dim]        Support: [link=https://buymeacoffee.com/pangana]buymeacoffee.com/pangana[/link] ☕[/dim]
 """
 
 
