@@ -1,26 +1,3 @@
-# retroMaid Quick Start Guide
-
-## What's New? 🎉
-
-All your requested features are implemented and ready to use!
-
-### ✅ TheGamesDB API Key Support
-Your API key in `.env` is now working properly.
-
-### ✅ .7z Format Support
-All systems (including sq1000) now scan `.7z` compressed files.
-
-### ✅ Dynamic Format Detection
-Reads Batocera's `_info.txt` files to support ALL formats automatically.
-
-### ✅ ASCII Art Intro
-Beautiful branding on startup.
-
-### ✅ Interactive Menu
-Persistent menu that stays open until you exit.
-
----
-
 ## Quick Start
 
 ### Launch Interactive Menu

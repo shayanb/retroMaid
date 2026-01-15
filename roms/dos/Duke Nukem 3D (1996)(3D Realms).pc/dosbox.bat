@@ -1,2 +1,0 @@
-c:
-DUKE3D.EXE

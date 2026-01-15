@@ -1,7 +1,7 @@
 # retroMaid Configuration File
 
 # Batocera ROM paths
-# For testing locally, use: "/Users/shayan/Documents/GitHub/retroMaid/roms"
+# For testing locally, use: "/Users/USER/Documents/GitHub/retroMaid/roms"
 # For network share, use: "/Volumes/BATOCERA/roms" or "/Volumes/share/roms"
 roms_path: "/Volumes/share/roms"  # Change to your mounted SMB path or use local path for testing
 

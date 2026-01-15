@@ -1,2 +1,0 @@
-c:
-PAPERBOY.COM
