@@ -13,6 +13,9 @@ A powerful metadata scraper for Batocera OS ROM collections. Automatically fetch
 - **Batocera Integration**: Native support for Batocera's gamelist.xml format
 - **Rich CLI**: Beautiful command-line interface with progress tracking
 
+<center> <img src="retromaid.png" alt="RetroMaid Command Line Interface" width="450"> </center> 
+
+
 ## Installation
 
 ### Requirements
